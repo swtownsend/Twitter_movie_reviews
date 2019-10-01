@@ -80,8 +80,14 @@ def process_name_data(spark, input_data, output_data):
     cast_table = \
     cast_table.toDF('cast_id','cast_name','birth_Year','death_Year','primary_Profession')  
        
-    # write users table to parquet files
-    cast_table.write.partitionBy('birth_Year').parquet(f'{output_data}cast_table', mode='overwrite')
+    # write users table to redshift
+    df.write \
+    .format("com.databricks.spark.redshift") \
+    .option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
+    .option("dbtable", "my_table_copy") \
+    .option("tempdir", "s3n://path/for/temp/data") \
+    .mode("error") \
+    .save()
     
     #make many to many realtion model for cast and movies
     cast_movie_rel_table = cast_df.select('nconst','knownForTitles').where(col("dt_mvmt").isNotNull())
@@ -101,7 +107,13 @@ def process_name_data(spark, input_data, output_data):
     
     #filter row that are not in the 
     #write table to tile
-    cast_movie_rel_table.write.parquet(f'{output_data}cast_rel_table', mode='overwrite')
+    df.write \
+    .format("com.databricks.spark.redshift") \
+    .option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
+    .option("dbtable", "my_table_copy") \
+    .option("tempdir", "s3n://path/for/temp/data") \
+    .mode("error") \
+    .save()
 
 
 def process_review_data(spark, output_data):
