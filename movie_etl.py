@@ -1,5 +1,5 @@
 #import the libaries need to read the config file
-#start and run the spark session and process the JSON files
+#start and run the spark session and process the  files
 import configparser
 from TwitterClient import TwitterClient
 import pandas as pd
@@ -53,8 +53,15 @@ def process_title_data(spark, input_data, output_data):
     movie_info_table = \
     movie_info_table.toDF('movie_id','movie_title','movie_release_year','runtimeMinutes','movie_type','genres')
     
-    # write title table to parquet files partitioned by release year 
-    movie_info_table.write.partitionBy('movie_release_year').parquet(f'{output_data}movie_info_table', mode='overwrite')
+    # write title table to staging table in reshift 
+    #movie_info_table.write.partitionBy('movie_release_year').parquet(f'{output_data}movie_info_table', mode='overwrite')
+    df.write \
+    .format("com.databricks.spark.redshift") \
+    .option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
+    .option("dbtable", "my_table_copy") \
+    .option("tempdir", "s3n://path/for/temp/data") \
+    .mode("error") \
+    .save()
 
 
 
