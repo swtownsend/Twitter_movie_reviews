@@ -184,18 +184,29 @@ def process_review_data(spark, output_data):
             print(e)
             
 
+# function move data from staing tables to 
+def insert_tables(cur, conn):
+    for query in insert_table_queries:
+        cur.execute(query)
+        conn.commit()
+        
 
 # create the spark session and call the functions
 # that will process the JSON files to the star shcema
 # parquet files.
 def main():
+    #create spark session
     spark = create_spark_session()
     input_data = "s3a:///swtown-capstone-udacity/input/"
-    output_data = "s3a:///swtown-capstone-udacity/output/"
+    
+    #create database connection and cursor
+    conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
+    cur = conn.cursor()
     
     process_title_data(spark, input_data, output_data)    
     process_name_data(spark, input_data, output_data)
     process_review_data(spark, output_data)
+    insert_tables(cur, conn)
 
 
 if __name__ == "__main__":
