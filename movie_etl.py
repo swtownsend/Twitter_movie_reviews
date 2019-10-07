@@ -10,6 +10,7 @@ from pyspark.sql import SparkSession,SQLContext
 from pyspark.sql.functions import split,explode
 from pyspark.sql.functions import udf, col,monotonically_increasing_id
 from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, date_format
+from insert_tables import insert_table_queries, truncate_staging
 
 # access and read the config file
 config = configparser.ConfigParser()
@@ -124,70 +125,71 @@ def process_review_data(spark, output_data):
     #convert datframe colum movie title to list
     movie_titles = movie_info_table.select('movie_title').collect()
     
-    # for loop to get tweets associated to a movie title 
-    #and calling function to get the tweets 
-    for movie_title  in movie_titles:
-        #add quotes for the tweet search 
-        movie_title = pformat(movie_title[0])
+    #get the tweets for the movie title limte to the 1st 50
+    tweets = api.get_tweets(movie_titles)
+    #print('tweets: ',tweets)
         
-        #get the tweets for the movie title limte to the 1st 50
-        tweets = api.get_tweets(query = movie_title,count = 50)
-        #print('tweets: ',tweets)
-        
-        try:
-            #create review data frame
-            review_df = pd.DataFrame.from_dict(tweets)
-            review_df = spark.createDataFrame(tweets)
+    try:
+    	#create review data frame
+    	review_df = pd.DataFrame.from_dict(tweets)
+    	review_df = spark.createDataFrame(tweets)
 
-            #select the fields for the review table
-            reviewer_table = \
-            review_df.select('user_id','screen_name','location').dropDuplicates()
+    	#select the fields for the review table
+    	reviewer_table = \
+    	review_df.select('user_id','screen_name','location').dropDuplicates()
 
-            #write the table to a parquet file
-            reviewer_table.write.parquet(f'{output_data}reviewer_table', mode='append')
+    	#write the table to a parquet file
+    	cast_movie_rel_table.write \
+    	.format("com.databricks.spark.redshift") \
+    	.option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
+    	.option("dbtable", "my_table_copy") \
+    	.option("tempdir", "s3n://path/for/temp/data") \
+    	.mode("error") \
+    	.save()
 
-            #join the log and song dataframes 
-            movie_review_table = review_df.join(title_df,review_df.movie_title == title_df.primaryTitle)
+    	#join the log and song dataframes 
+    	movie_review_table = review_df.join(title_df,review_df.movie_title == title_df.primaryTitle)
+    	
+    	movie_review_table =  \
+    	movie_review_table.select('movie_title',    
+                                'tconst',
+                                'user_id',
+                                'text',
+                                'retweet_count',
+                                'favorite_count',
+                                'sentiment',
+                                'created_at',
+                                month('created_at').alias('month'),
+                                year('created_at').alias('year')
+                                )
 
-            #add promary key to table
-            movie_review_table =  \
-            movie_review_table.withColumn('movie_review_id', monotonically_increasing_id())
+    	#rename columns for
+    	movie_review_table.toDF('movie_id',
+                              'user_id',
+                              'review_text',
+                              'retweet_count',
+                              'favorite_count',
+                              'review_score',
+                              'date_created',
+                              'month',
+                              'year')
 
-            movie_review_table =  \
-            movie_review_table.select('movie_review_id',
-                                      'movie_title',    
-                                      'tconst',
-                                      'user_id',
-                                      'text',
-                                      'retweet_count',
-                                      'favorite_count',
-                                      'sentiment',
-                                      'created_at',
-                                      month('created_at').alias('month'),
-                                      year('created_at').alias('year')
-                                     )
-
-            #rename columns for
-            movie_review_table.toDF('movie_review_id',
-                                    'movie_id',
-                                    'user_id',
-                                    'review_text',
-                                    'retweet_count',
-                                    'favorite_count',
-                                    'review_score',
-                                    'date_created',
-                                    'month',
-                                    'year')
-
-            # write songplays table to parquet files partitioned by year and month
-            movie_review_table.write.partitionBy('movie_title','year', 'month').parquet(f'{output_data}movie_review_table', mode='append')
-        except Exception as e:
-            print(e)
+    	# write songplays table to parquet files partitioned by year and month
+    	cast_movie_rel_table.write \
+    	.format("com.databricks.spark.redshift") \
+    	.option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
+    	.option("dbtable", "my_table_copy") \
+    	.option("tempdir", "s3n://path/for/temp/data") \
+    	.mode("error") \
+    	.save()
+    	
+    except Exception as e:
+    	print(e)
             
 
 # function move data from staing tables to 
-def insert_tables(cur, conn):
-    for query in insert_table_queries:
+def run_sql(cur, conn,table_list):
+    for query in table_list:
         cur.execute(query)
         conn.commit()
         
@@ -207,7 +209,9 @@ def main():
     process_title_data(spark, input_data, output_data)    
     process_name_data(spark, input_data, output_data)
     process_review_data(spark, output_data)
-    insert_tables(cur, conn)
+    run_sql(cur, conn,insert_table_queries)
+    run_sql(cur, conn,truncate_staging)
+
 
 
 if __name__ == "__main__":

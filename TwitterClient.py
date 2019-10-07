@@ -46,44 +46,49 @@ class TwitterClient(object):
         return sentiment_polarity
   
     #seach and return tweets
-    def get_tweets(self, query, count = 10): 
+    def get_tweets(self, movie_list): 
           
         # empty list to store parsed tweets 
         tweets = [] 
-  
-        try: 
-            # call twitter api to fetch tweets 
-            fetched_tweets = self.api.search(q = query, count = count) 
-  
-            # parsing tweets one by one 
-            for tweet in fetched_tweets: 
-                # empty dictionary to store required params of a tweet 
-                parsed_tweet = {}
-                #print(tweet) 
-  
-                #saving the user_id, screen name, location, retweet c
-                parsed_tweet['movie_title'] = query
-                parsed_tweet['user_id'] = tweet.user.id 
-                parsed_tweet['screen_name'] = tweet.user.name
-                parsed_tweet['location'] = tweet.user.location
-                parsed_tweet['retweet_count'] = tweet.retweet_count
-                parsed_tweet['favorite_count'] = tweet.favorite_count
-                parsed_tweet['created_at'] = tweet.created_at
-                
-                # saving text of tweet 
-                parsed_tweet['text'] = tweet.text 
-                # saving sentiment of tweet 
-                parsed_tweet['sentiment'] = self.get_tweet_sentiment(tweet.text) 
-  
-                # appending parsed tweet to tweets list 
-                if tweet.retweet_count > 0: 
-                    # if tweet has retweets, ensure that it is appended only once 
-                    if parsed_tweet not in tweets: 
-                        tweets.append(parsed_tweet) 
-                else: 
-                    tweets.append(parsed_tweet) 
-              
-            return tweets 
+  			
+  			#list of mive titles is moved though
+        for movie in movie_list:
+        	movie_title = pformat(movie_title[0])
+        
+        
+	        try: 
+	            # call twitter api to fetch tweets 
+	            fetched_tweets = self.api.search(q = movie_title, count = 10) 
+	  
+	            # parsing tweets one by one 
+	            for tweet in fetched_tweets: 
+	                # empty dictionary to store required params of a tweet 
+	                parsed_tweet = {}
+	                #print(tweet) 
+	  
+	                #saving the user_id, screen name, location, retweet c
+	                parsed_tweet['movie_title'] = query
+	                parsed_tweet['user_id'] = tweet.user.id 
+	                parsed_tweet['screen_name'] = tweet.user.name
+	                parsed_tweet['location'] = tweet.user.location
+	                parsed_tweet['retweet_count'] = tweet.retweet_count
+	                parsed_tweet['favorite_count'] = tweet.favorite_count
+	                parsed_tweet['created_at'] = tweet.created_at
+	                
+	                # saving text of tweet 
+	                parsed_tweet['text'] = tweet.text 
+	                # saving sentiment of tweet 
+	                parsed_tweet['sentiment'] = self.get_tweet_sentiment(tweet.text) 
+	  
+	                # appending parsed tweet to tweets list 
+	                if tweet.retweet_count > 0: 
+	                    # if tweet has retweets, ensure that it is appended only once 
+	                    if parsed_tweet not in tweets: 
+	                        tweets.append(parsed_tweet) 
+	                else: 
+	                    tweets.append(parsed_tweet) 
+	              
+	        return tweets 
         
         except Exception as e: 
             # print error (if any) 
