@@ -58,9 +58,10 @@ def process_title_data(spark, input_data, output_data):
     #movie_info_table.write.partitionBy('movie_release_year').parquet(f'{output_data}movie_info_table', mode='overwrite')
     movie_info_table.write \
     .format("com.databricks.spark.redshift") \
-    .option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
-    .option("dbtable", "my_table_copy") \
-    .option("tempdir", "s3n://path/for/temp/data") \
+    .option("url", "jdbc:redshift://redshifthost:5439/{}?user={}&password={}" \
+    .format(config.get('DATABASE','DB_NAME'),config.get('DATABASE','DB_USER'),config.get('DATABASE','DB_PASSWORD')) \
+    .option("dbtable", "movie_info_staging") \
+    .option("tempdir", "s3a:///swtown-capstone-udacity/output/") \
     .mode("error") \
     .save()
 
@@ -86,8 +87,8 @@ def process_name_data(spark, input_data, output_data):
     .format("com.databricks.spark.redshift") \
     .option("url", "jdbc:redshift://redshifthost:5439/{}?user={}&password={}" \
     .format(config.get('DATABASE','DB_NAME'),config.get('DATABASE','DB_USER'),config.get('DATABASE','DB_PASSWORD')) \
-    .option("dbtable", "my_table_copy") \
-    .option("tempdir", "s3n://path/for/temp/data") \
+    .option("dbtable", "cast_staging") \
+    .option("tempdir", "s3a:///swtown-capstone-udacity/output/a") \
     .mode("error") \
     .save()
     
@@ -111,9 +112,10 @@ def process_name_data(spark, input_data, output_data):
     #write table to tile
     cast_movie_rel_table.write \
     .format("com.databricks.spark.redshift") \
-    .option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
-    .option("dbtable", "my_table_copy") \
-    .option("tempdir", "s3n://path/for/temp/data") \
+    .option("url", "jdbc:redshift://redshifthost:5439/{}?user={}&password={}" \
+    .format(config.get('DATABASE','DB_NAME'),config.get('DATABASE','DB_USER'),config.get('DATABASE','DB_PASSWORD')) \
+    .option("dbtable", "cast_movie_rel_staging") \
+    .option("tempdir", "s3a:///swtown-capstone-udacity/output/") \
     .mode("error") \
     .save()
 
@@ -139,11 +141,12 @@ def process_review_data(spark, output_data):
     	review_df.select('user_id','screen_name','location').dropDuplicates()
 
     	#write the table to a parquet file
-    	cast_movie_rel_table.write \
+    	review_df.write \
     	.format("com.databricks.spark.redshift") \
-    	.option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
-    	.option("dbtable", "my_table_copy") \
-    	.option("tempdir", "s3n://path/for/temp/data") \
+    	.option("url", "jdbc:redshift://redshifthost:5439/{}?user={}&password={}" \
+    	.format(config.get('DATABASE','DB_NAME'),config.get('DATABASE','DB_USER'),config.get('DATABASE','DB_PASSWORD')) \
+    	.option("dbtable", "reviewer_staging") \
+    	.option("tempdir", "s3a:///swtown-capstone-udacity/output/") \
     	.mode("error") \
     	.save()
 
@@ -177,9 +180,10 @@ def process_review_data(spark, output_data):
     	# write songplays table to parquet files partitioned by year and month
     	cast_movie_rel_table.write \
     	.format("com.databricks.spark.redshift") \
-    	.option("url", "jdbc:redshift://redshifthost:5439/database?user=username&password=pass") \
-    	.option("dbtable", "my_table_copy") \
-    	.option("tempdir", "s3n://path/for/temp/data") \
+    	.option("url", "jdbc:redshift://redshifthost:5439/{}?user={}&password={}" \
+    	.format(config.get('DATABASE','DB_NAME'),config.get('DATABASE','DB_USER'),config.get('DATABASE','DB_PASSWORD')) \
+    	.option("dbtable", "movie_review_staging") \
+    	.option("tempdir", "s3a:///swtown-capstone-udacity/output/") \
     	.mode("error") \
     	.save()
     	
